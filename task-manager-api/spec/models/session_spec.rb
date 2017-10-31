@@ -14,6 +14,7 @@ RSpec.describe 'Sessions API', type: :request do
     before do
       post '/sessions', params: { session: credentials }.to_json, headers: headers
     end
+
     context 'when the credentials are correct' do
       let(:credentials) { { email: user.email, password: '123456' } }
       it 'returns status code 200' do
@@ -21,8 +22,36 @@ RSpec.describe 'Sessions API', type: :request do
       end
       
       it 'return the json data for the user with auth token' do
+        user.reload
         expect(json_body[:auth_token]).to eq(user.auth_token)
       end
+    end
+
+    context 'when the credentials are incorrect' do
+      let(:credentials) { { email: user.email, password: '654321' } }
+      it 'returns status code 401' do
+        expect(response).to have_http_status(401)
+      end
+      
+      it 'return json data for the errors' do
+        user.reload
+        expect(json_body).to have_key(:errors)
+      end
+    end
+  end
+
+  describe 'DELETE /session/:id' do
+    let(:auth_token) {user.auth_token}
+    before do
+      delete "/sessions/#{auth_token}", params: {}, headers: headers
+    end
+
+    it 'when return status code 204' do
+      expect(response).to have_http_status(204)
+    end
+
+    it 'changes de user auth_token' do
+      expect(User.find_by(auth_token: auth_token)).to be_nil
     end
   end
 end
